@@ -22,7 +22,7 @@ public:
 	MyDB_Page (MyDB_BufferManager& bufManager, MyDB_TablePtr tb, long pos);
 
 	// FEEL FREE TO ADD ADDITIONAL PUBLIC METHODS
-	void * getBytes ();
+	void *getBytes ();
 	void wroteBytes ();
 	void increaseRefCnt ();
 	void decreaseRefCnt ();
@@ -35,7 +35,6 @@ private:
     int pageNum;
 	int refCount;
 	bool dirty;
-	bool pin;
     void *bytes;
 	MyDB_TablePtr table;
 

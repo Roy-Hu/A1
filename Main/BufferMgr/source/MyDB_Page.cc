@@ -15,7 +15,6 @@ MyDB_Page :: MyDB_Page (MyDB_BufferManager& bufManager, MyDB_TablePtr tb, long p
     pageNum = pgNum;
     bytes = nullptr;
     dirty = false;
-    pin = false;
 }
 
 void * MyDB_Page :: getBytes () {

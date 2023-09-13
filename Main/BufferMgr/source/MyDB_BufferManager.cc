@@ -80,8 +80,6 @@ MyDB_PageHandle MyDB_BufferManager :: getPinnedPage (MyDB_TablePtr whichTable, l
 		idPageMap[tablePageId] = newPage;
 	}
 
-	idPageMap[tablePageId]->pin = true;
-
 	vector<MyDB_PagePtr>::iterator it = find(pagesInRAM.begin(), pagesInRAM.end(), idPageMap[tablePageId]);
 	// If page already in RAM, remove it from the pagesInRAM so that it will never be kicked out
 	if (it != pagesInRAM.end()) {
@@ -133,8 +131,6 @@ MyDB_PageHandle MyDB_BufferManager :: getPinnedPage () {
 		idPageMap[tablePageId] = newPage;
 	}
 	
-	idPageMap[tablePageId]->pin = true;
-
 	if (unusedRAM.size() == 0) {
 		findAndKickVictim();
 		if (unusedRAM.size() == 0) {
@@ -153,14 +149,11 @@ MyDB_PageHandle MyDB_BufferManager :: getPinnedPage () {
 
 void MyDB_BufferManager :: unpin (MyDB_PageHandle unpinMe) {
 	// Add back to pagesInRAM so that the page can be kicked
-	// cout << "Unpin " << unpinMe->getPage()->pageNum << endl;
 	pagesInRAM.push_back(unpinMe->getPage());
-	unpinMe->getPage()->pin = false;
 }
 
 void MyDB_BufferManager :: findAndKickVictim() {
 	MyDB_PagePtr victim = pagesInRAM.front();
-	// cout << "kick " << victim->pageNum << endl;
 	if (victim->dirty) {
 		int fd = tableFdMap[victim->table];
 		lseek(fd, victim->pageNum * pageSize, SEEK_SET);
@@ -168,10 +161,6 @@ void MyDB_BufferManager :: findAndKickVictim() {
 			cout << "Fail to write back bytes to Table: " << victim->table->getStorageLoc().c_str() << ", Page Num: " << victim->pageNum << endl;
 		}
 		victim->dirty = false;
-
-		if (victim->pageNum < 10) {
-			cout << endl << "Kick: Write page " << victim->pageNum << " : " << victim->bytes << endl;
-		}
 	}
 
 	unusedRAM.push_back(victim->bytes);
@@ -192,7 +181,7 @@ void MyDB_BufferManager :: accessPage (MyDB_Page &page) {
 		return;
 
 	// Page in the RAM but not in pagesInRAM => pinned page
-	} else if (pagePtr->pin == true && pagePtr->bytes != nullptr) {
+	} else if (it == pagesInRAM.end() && pagePtr->bytes != nullptr) {
 		return;
 	// Page isn't in the RAM
 	} else {
@@ -238,17 +227,9 @@ void MyDB_BufferManager :: releasePage(MyDB_Page &page) {
 		idPageMap.erase(tablePageId);
 
 	// Page in the RAM but not in pagesInRAM => pinned page
-	} else if (it == pagesInRAM.end() && pagePtr->pin == true) {
+	} else if (it == pagesInRAM.end() && pagePtr->bytes != nullptr) {
 		// only add the page back to the pagesInRAM
-		// cout << "uppin page num " << page.pageNum << endl;
-		// MyDB_PageHandle tmp = make_shared <MyDB_PageHandleBase> (pagePtr);
-
-		// // To avoid release again while tmp is released
-		// pagePtr->increaseRefCnt();
-		// unpin(tmp);
-		// cout << "Unpin " <<pagePtr->pageNum << endl;
 		pagesInRAM.push_back(pagePtr);
-		pagePtr->pin = false;
 	// For non-anomolous page that is in the pageInRAM, recycle the RAM
 	} else if (it != pagesInRAM.end()) { 
 		// write it back to disk if the page is dirty since we are going to erease the bytes in ram
